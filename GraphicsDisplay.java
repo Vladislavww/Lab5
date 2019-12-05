@@ -8,17 +8,15 @@ import java.awt.Graphics2D;
 import java.awt.Paint; 
 import java.awt.Stroke;
 import java.awt.font.FontRenderContext;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath; 
 import java.awt.geom.Line2D; 
 import java.awt.geom.Point2D; 
 import java.awt.geom.Rectangle2D; 
-import java.awt.geom.QuadCurve2D;
 import javax.swing.JPanel;
 import java.util.Stack;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
-import java.awt.event.MouseAdapter;
 
 @SuppressWarnings("serial")
 public class GraphicsDisplay extends JPanel implements MouseMotionListener{
@@ -51,13 +49,7 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 	private MouseClass mouse = new MouseClass();
 	private double[] start_coord = new double[2];
 	private double[] finish_coord = new double[2];
-	/*private double minX0;
-	private double maxX0; 
-	private double minY0; 
-	private double maxY0; */
-	private Stack start_st = new Stack();
-	private Stack finish_st = new Stack();
-	private int stack_level = 0;
+	private boolean scaling_mode = false;
 	public GraphicsDisplay(){ 
 		// Цвет заднего фона области отображения - белый 
 		setBackground(Color.WHITE); 
@@ -77,7 +69,6 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		start_coord[1] = -1;
 		finish_coord[0] = -1;
 		finish_coord[1] = -1;
-		
 	}
 	public void showGraphics(Double[][] graphicsData){ 
 		// Сохранить массив точек во внутреннем поле класса 
@@ -116,8 +107,7 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		// Шаг 3 - Определить минимальное и максимальное значения для координат X и Y 
 		// Это необходимо для определения области пространства, подлежащей отображению 
 		// Е? верхний левый угол это (minX, maxY) - правый нижний это (maxX, minY) 
-		if(finish_coord[0] == -1 || true){
-			
+		if(mouse.get_level() == 0){
 			minX = graphicsData[0][0]; 
 			maxX = graphicsData[graphicsData.length-1][0];
 			minY = graphicsData[0][1]; 
@@ -130,52 +120,37 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 					maxY = graphicsData[i][1]; 
 				} 
 			}
-			if(finish_coord[0] > -1){
-				//System.out.println(zero.getX() + "  " + zero.getY());
-				double[] temp = new double[2];
-				temp = (double[]) start_st.peek();
-				minX = temp[0];
-				minY = temp[1];
-				temp = (double[]) finish_st.peek();
-				maxX = temp[0];
-				maxY = temp[1];
-				start_coord[0] = 0;
-				start_coord[1] = 0;
-				finish_coord[0] = getSize().getWidth();
-				finish_coord[1] = getSize().getHeight();
-			}
-			/* Шаг 4 - Определить (исходя из размеров окна) масштабы по осям X и Y - сколько пикселов * приходится на единицу длины по X и по Y */ 
-			double scaleX = getSize().getWidth() / (maxX - minX); 
-			double scaleY = getSize().getHeight() / (maxY - minY);
-			scale = Math.min(scaleX, scaleY); 
-			// Шаг 6 - корректировка границ отображаемой области согласно выбранному масштабу 
-			if (scale==scaleX){ 
-				double yIncrement = (getSize().getHeight()/scale - (maxY - minY))/2;
-				maxY += yIncrement;
-				minY -= yIncrement; 
-				}
-			if (scale==scaleY){ // Если за основу был взят масштаб по оси Y, действовать по аналогии
-				double xIncrement = (getSize().getWidth()/scale - (maxX - minX))/2;
-				maxX += xIncrement; 
-				minX -= xIncrement;
-			}
 		}
 		else{
-			Point2D.Double zero = xyToPoint(0, 0);
-			minX = (start_coord[0] - zero.getX())/scale;
-			minY = (zero.getY() - finish_coord[1])/scale;
-			maxX = (finish_coord[0] - zero.getX())/scale;
-			maxY = (zero.getY() - start_coord[1])/scale;
-			System.out.println(start_coord[0]);
-			System.out.println(zero.getX());
-			System.out.println(minX + "  " + minY);
-			double scaleX = getSize().getWidth() / (maxX - minX); 
-			double scaleY = getSize().getHeight() / (maxY - minY);
-			scale = Math.min(scaleX, scaleY); 
-			start_coord[0] = -1;
-			start_coord[1] = -1;
-			finish_coord[0] = -1;
-			finish_coord[1] = -1;
+			//System.out.println(zero.getX() + "  " + zero.getY());
+			double[] temp = new double[2];
+			//temp = (double[]) start_st.peek();
+			temp = mouse.get(0);
+			minX = temp[0];
+			minY = temp[1];
+			//temp = (double[]) finish_st.peek();
+			temp = mouse.get(1);
+			maxX = temp[0];
+			maxY = temp[1];
+			/*start_coord[0] = 0;
+			start_coord[1] = 0;
+			finish_coord[0] = getSize().getWidth();
+			finish_coord[1] = getSize().getHeight();*/
+		}
+		/* Шаг 4 - Определить (исходя из размеров окна) масштабы по осям X и Y - сколько пикселов * приходится на единицу длины по X и по Y */ 
+		double scaleX = getSize().getWidth() / (maxX - minX); 
+		double scaleY = getSize().getHeight() / (maxY - minY);
+		scale = Math.min(scaleX, scaleY); 
+		// Шаг 6 - корректировка границ отображаемой области согласно выбранному масштабу 
+		if (scale==scaleX){ 
+			double yIncrement = (getSize().getHeight()/scale - (maxY - minY))/2;
+			maxY += yIncrement;
+			minY -= yIncrement; 
+			}
+		if (scale==scaleY){ // Если за основу был взят масштаб по оси Y, действовать по аналогии
+			double xIncrement = (getSize().getWidth()/scale - (maxX - minX))/2;
+			maxX += xIncrement; 
+			minX -= xIncrement;
 		}
 		// Шаг 7 - Сохранить текущие настройки холста 
 		canvas = (Graphics2D) g; 
@@ -200,6 +175,9 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 			paintZone(canvas);
 			double Square = calculate_square();
 			paintLabel(canvas, Square);
+		}
+		if(scaling_mode){
+			paintRect(canvas);
 		}
 		if(bold){
 			mouse_coord(canvas, mouse_x, mouse_y);
@@ -400,6 +378,9 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		canvas.setColor(Color.BLACK);
 		canvas.drawString(str, (float)(labelPos.getX() - bounds.getWidth()/2), (float)(labelPos.getY() - bounds.getHeight()/2));
 	}
+	private void paintRect(Graphics2D canvas){
+		canvas.drawRect((int)start_coord[0], (int)start_coord[1], (int)(finish_coord[0]-start_coord[0]), (int)(finish_coord[1]-start_coord[1]));
+	}
 	protected Point2D.Double xyToPoint(double x, double y){ 
 		// Вычисляем смещение X от самой левой точки (minX) 
 		double deltaX = x - minX; 
@@ -468,8 +449,6 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 			canvas.translate(getSize().getWidth()*0.2, getSize().getHeight()*1.1);
 			canvas.rotate(Math.PI/2*3);
 		}
-		else{
-		}
 	}
 	private boolean check_markers(int x, int y){
 		Point2D.Double m_point = xyToPoint(x, y);
@@ -488,7 +467,7 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		return false;
 	}
 	
-	public void mouse_coord(Graphics2D canvas, double x, double y){
+	public void mouse_coord(Graphics2D canvas, double x, double y){ //в этой фуекции рисую координаты, связанные с мышью
 		Double temp0 = x;
 		Double temp1 = y;
 		String str_x = temp0.toString();
@@ -496,18 +475,19 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		FontRenderContext context = canvas.getFontRenderContext();
 		Rectangle2D bounds = axisFont.getStringBounds(str_x, context);
 		Point2D.Double Pos = xyToPoint(x, y); 
-		// Вывести надпись в точке с вычисленными координатами 
 		canvas.setColor(Color.BLACK);
-		//canvas.drawString(str, (float)(labelPos.getX() - bounds.getWidth()/2), (float)(labelPos.getY() - bounds.getHeight()/2));
 		canvas.drawString(str_x+" "+str_y, (float)Pos.getX(), (float)Pos.getY());
 	}
 	public void mouseDragged(MouseEvent arg0) {
 		if(mouse_pressed == false){
-			start_coord[0] = arg0.getX();
-			start_coord[1] = arg0.getY();
+			/*start_coord[0] = arg0.getX();
+			start_coord[1] = arg0.getY();*/
 		}
 		mouse_pressed = mouse.getPressed();
-		
+		finish_coord[0] = arg0.getX();
+		finish_coord[1] = arg0.getY();
+		scaling_mode = true;
+		repaint();
 		
 	}
 	public void mouseMoved(MouseEvent arg0) {
@@ -523,17 +503,15 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 				bold = false;
 				
 			}
-			if(mouse_pressed == true && mouse.getPressed() == false){
+			/*if(mouse_pressed == true && mouse.getPressed() == false){
 				finish_coord[0] = arg0.getX();
 				finish_coord[1] = arg0.getY();
 				change_scale();
-			}
+			}*/
 			mouse_pressed = mouse.getPressed();
 		}
 	}
 	private void change_scale(){
-		System.out.println(start_coord[0] + "  " + start_coord[1]);
-		System.out.println(finish_coord[0] + "  " + finish_coord[1]);
 		Point2D.Double zero = xyToPoint(0, 0);
 		double minX0 = (start_coord[0] - zero.getX())/scale;
 		double minY0 = (zero.getY() - finish_coord[1])/scale;
@@ -541,12 +519,75 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		double maxY0 = (zero.getY() - start_coord[1])/scale;
 		double[] start = new double[] {minX0, minY0};
 		double[] finish = new double[] {maxX0, maxY0};
-		start_st.add(start);
-		finish_st.add(finish);
-		stack_level += 1;
+		mouse.add(start, finish);
 		repaint();
 		
 	}
+	public class MouseClass extends MouseAdapter{
+		private boolean pressed = false;
+		private Stack start_st = new Stack(); //содержание координат левого верхнего угла
+		private Stack finish_st = new Stack(); //содержание координат правого нижнего угла
+		private int stack_level = 0;
+		private boolean lev_changed = false;
+		public void mousePressed(MouseEvent e){
+			if(e.getButton() == 1){
+				start_coord[0] = e.getX();
+				//System.out.println(e.getX());
+				start_coord[1] = e.getY();
+			}
+			pressed = true;
+		}
+		
+		public void mouseReleased(MouseEvent e){
+			if(e.getButton() !=3){
+				change_scale();
+			}
+			if(scaling_mode){
+				scaling_mode = false;
+				repaint();
+			}
+			pressed = false;
+			
+		}
+		
+		public void mouseClicked(MouseEvent e){
+			if(e.getButton() ==3){
+				if(stack_level > 0){
+					start_st.pop();
+					finish_st.pop();
+					stack_level -= 1;
+					repaint();
+				}
+			}
+			
+		}
+		public boolean getPressed(){
+			return pressed;
+		}
+		public void add(double[] start, double[] finish){
+			start_st.add(start);
+			finish_st.add(finish);
+			stack_level += 1;
+			
+		}
+		public double[] get(int num){
+			if(num == 0){
+				return (double[]) start_st.peek();
+			}
+			else{
+				return (double[]) finish_st.peek();
+			}
+		}
+		public int get_level(){
+			return stack_level;
+		}
+		public boolean level_changed(){
+			boolean result = lev_changed;
+			lev_changed = false;
+			return result;
+		}
+	}
+
 }
 	
 			
