@@ -50,6 +50,10 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 	private double[] start_coord = new double[2];
 	private double[] finish_coord = new double[2];
 	private boolean scaling_mode = false;
+	private int point_number;
+	private boolean moving_mode = false;
+	
+	
 	public GraphicsDisplay(){ 
 		// ÷вет заднего фона области отображени€ - белый 
 		setBackground(Color.WHITE); 
@@ -379,6 +383,9 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		canvas.drawString(str, (float)(labelPos.getX() - bounds.getWidth()/2), (float)(labelPos.getY() - bounds.getHeight()/2));
 	}
 	private void paintRect(Graphics2D canvas){
+		BasicStroke graphicsStroke0 = new BasicStroke(2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 10.0f, new float[] {20, 5}, 0.0f);
+		canvas.setStroke(graphicsStroke0);
+		canvas.setColor(Color.BLACK);
 		canvas.drawRect((int)start_coord[0], (int)start_coord[1], (int)(finish_coord[0]-start_coord[0]), (int)(finish_coord[1]-start_coord[1]));
 	}
 	protected Point2D.Double xyToPoint(double x, double y){ 
@@ -450,49 +457,48 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 			canvas.rotate(Math.PI/2*3);
 		}
 	}
-	private boolean check_markers(int x, int y){
+	private boolean check_markers(int x, int y, int radius){
 		Point2D.Double m_point = xyToPoint(x, y);
 		for(int i=0; i<graphicsData.length; i++){
 			Point2D.Double point = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
-			//System.out.println(Math.pow(point.getX() - m_point.getX(), 1) + "  " + Math.pow(point.getY() - m_point.getY(), 1));
-			//System.out.println(point.getX() + "  " + x);
-			//if((Math.pow(point.getX(), 2)+Math.pow(point.getY(), 2)) - (Math.pow(m_point.getX(), 2) + Math.pow(m_point.getY(), 2)) < 20){
-			if(Math.pow(point.getX() - x, 2) + Math.pow(point.getY() - y, 2) < 200){
-				
+			if(Math.pow(point.getX() - x, 2) + Math.pow(point.getY() - y, 2) < radius){
 				mouse_x = graphicsData[i][0];
 				mouse_y = graphicsData[i][1];
+				point_number = i;
 				return true;
 			}
 		}
 		return false;
 	}
-	
+	private void move_point(double y){
+		Point2D.Double zero = xyToPoint(0, 0);
+		graphicsData[point_number][1] = (zero.getY() - y)/scale;
+	}
 	public void mouse_coord(Graphics2D canvas, double x, double y){ //в этой фуекции рисую координаты, св€занные с мышью
 		Double temp0 = x;
 		Double temp1 = y;
-		String str_x = temp0.toString();
-		String str_y = temp1.toString();
-		FontRenderContext context = canvas.getFontRenderContext();
-		Rectangle2D bounds = axisFont.getStringBounds(str_x, context);
 		Point2D.Double Pos = xyToPoint(x, y); 
 		canvas.setColor(Color.BLACK);
-		canvas.drawString(str_x+" "+str_y, (float)Pos.getX(), (float)Pos.getY());
+		canvas.drawString("X:"+x+" Y:"+y, (float)Pos.getX(), (float)Pos.getY());
 	}
 	public void mouseDragged(MouseEvent arg0) {
-		if(mouse_pressed == false){
-			/*start_coord[0] = arg0.getX();
-			start_coord[1] = arg0.getY();*/
+		if(check_markers(arg0.getX(), arg0.getY(), 400) && scaling_mode == false){
+			move_point(arg0.getY());
+			moving_mode = true;
+			repaint();
 		}
-		mouse_pressed = mouse.getPressed();
-		finish_coord[0] = arg0.getX();
-		finish_coord[1] = arg0.getY();
-		scaling_mode = true;
-		repaint();
+		else if(moving_mode == false){
+			mouse_pressed = mouse.getPressed();
+			finish_coord[0] = arg0.getX();
+			finish_coord[1] = arg0.getY();
+			scaling_mode = true;
+			repaint();
+		}
 		
 	}
 	public void mouseMoved(MouseEvent arg0) {
 		if(canvas != null){
-			if(check_markers(arg0.getX(), arg0.getY())){
+			if(check_markers(arg0.getX(), arg0.getY(), 200)){
 				bold = true;
 				show_mouse_coord();
 			}
@@ -503,11 +509,6 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 				bold = false;
 				
 			}
-			/*if(mouse_pressed == true && mouse.getPressed() == false){
-				finish_coord[0] = arg0.getX();
-				finish_coord[1] = arg0.getY();
-				change_scale();
-			}*/
 			mouse_pressed = mouse.getPressed();
 		}
 	}
@@ -532,22 +533,19 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 		public void mousePressed(MouseEvent e){
 			if(e.getButton() == 1){
 				start_coord[0] = e.getX();
-				//System.out.println(e.getX());
 				start_coord[1] = e.getY();
 			}
 			pressed = true;
 		}
 		
 		public void mouseReleased(MouseEvent e){
-			if(e.getButton() !=3){
-				change_scale();
-			}
-			if(scaling_mode){
+			if(e.getButton() != 3 && scaling_mode == true){
 				scaling_mode = false;
+				change_scale();
 				repaint();
 			}
 			pressed = false;
-			
+			moving_mode = false;
 		}
 		
 		public void mouseClicked(MouseEvent e){
