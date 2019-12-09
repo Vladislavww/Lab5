@@ -585,6 +585,10 @@ public class GraphicsDisplay extends JPanel implements MouseMotionListener{
 			return result;
 		}
 	}
+	
+	public Double[][] export_data(){
+		return graphicsData;
+	}
 
 }
 	

@@ -4,9 +4,11 @@ import java.awt.BorderLayout;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import javax.swing.AbstractAction; 
@@ -16,6 +18,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane; 
 import javax.swing.event.MenuEvent; 
 import javax.swing.event.MenuListener;
@@ -36,6 +39,7 @@ public class MainFrame extends JFrame{
 	private JCheckBoxMenuItem showMarkersMenuItem;
 	private JCheckBoxMenuItem showGraphicsSizeMenuItem;
 	private JCheckBoxMenuItem rotateSystemMenuItem;
+	private JMenuItem exportMenuItem;
 	// Компонент-отображатель графика 
 	private GraphicsDisplay display = new GraphicsDisplay();
 	// Флаг, указывающий на загруженность данных графика
@@ -70,7 +74,20 @@ public class MainFrame extends JFrame{
 			}};
 		// Добавить соответствующий элемент меню 
 		fileMenu.add(openGraphicsAction);
+		Action exportGraphicsAction = new AbstractAction("Сохранить файл с графиком"){
+			public void actionPerformed(ActionEvent event){ 
+				if (fileChooser==null){ 
+					fileChooser = new JFileChooser();
+					fileChooser.setCurrentDirectory(new File("."));
+				}
+				if (fileChooser.showSaveDialog(MainFrame.this) == JFileChooser.APPROVE_OPTION){
+					saveGraphics(fileChooser.getSelectedFile());
+				}
+			}};
 		// Создать пункт меню "График"
+		exportMenuItem = new JMenuItem(exportGraphicsAction);
+		fileMenu.add(exportMenuItem);
+		exportMenuItem.setEnabled(false);
 		JMenu graphicsMenu = new JMenu("График");
 		menuBar.add(graphicsMenu);
 		// Создать действие для реакции на активацию элемента "Показывать оси координат" 
@@ -133,7 +150,7 @@ public class MainFrame extends JFrame{
 				// Первой из потока читается координата точки X 
 				Double x = in.readDouble();
 				// Затем - значение графика Y в точке X 
-				Double y = in.readDouble() - 5; 
+				Double y = in.readDouble(); 
 				// Прочитанная пара координат добавляется в массив 
 				graphicsData[i++] = new Double[] {x, y}; 
 			}
@@ -143,6 +160,7 @@ public class MainFrame extends JFrame{
 				fileLoaded = true;
 				// Вызывать метод отображения графика 
 				display.showGraphics(graphicsData); 
+				exportMenuItem.setEnabled(true);
 			} 
 			// Шаг 5 - Закрыть входной поток 
 			in.close(); 
@@ -156,6 +174,21 @@ public class MainFrame extends JFrame{
 			// В случае ошибки ввода из файлового потока показать сообщение об ошибке 
 			JOptionPane.showMessageDialog(MainFrame.this, "Ошибка чтения координат точек из файла", "Ошибка загрузки данных", JOptionPane.WARNING_MESSAGE);
 			return;
+		}
+	}
+	
+	protected void saveGraphics(File selectedFile){
+		try { 
+			// Создать новый байтовый поток вывода, направленный в указанный файл 
+			DataOutputStream out = new DataOutputStream(new FileOutputStream(selectedFile));
+			Double[][] graphicsData = display.export_data();
+			for (int i = 0; i<graphicsData.length; i++) { 
+				out.writeDouble(graphicsData[i][0]); 
+				out.writeDouble(graphicsData[i][1]); 
+			} // Закрыть поток вывода 
+			out.close(); 
+		} 
+		catch (Exception e) {
 		}
 	}
 	
